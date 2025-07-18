@@ -1,10 +1,15 @@
 ############################################
 # Filename: x-1.universal.gitignore
-# Version: v1.0.2
+# Version: v1.0.3
 # Last Release Date: 20250718Z
 # Author: Rick Godfrey
 # Website: https://x-1.tech
 ############################################
+# Allow specific exceptions (optional overrides)
+!.keep
+!.gitkeep
+!bin/
+
 # Temporary and Backup Files
 *~
 *.swp
@@ -25,11 +30,12 @@ logs/
 runtime/
 
 # Build and Output Directories
+release/
+debug/
 build/
 dist/
 out/
 target/
-bin/
 obj/
 
 # Dependency Directories
@@ -150,7 +156,3 @@ doc/_build/
 coverage/
 test-output/
 *.profraw
-
-# Allow specific exceptions (optional overrides)
-!.keep
-!.gitkeep
