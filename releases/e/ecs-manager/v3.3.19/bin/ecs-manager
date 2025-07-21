@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 ######################################################## BISU Importer Start #########################################################
 ## Official Web Site: https://bisu.cc
-## Version: 20250718Z1
+## Version: 20250721Z1
 ## Recommended BISU PATH: /usr/local/sbin/bisu
 ## Set the required version of BISU
 export THIS_REQUIRED_BISU_VERSION=">=9.0.0"
 export BISU_PATH="/usr/local/sbin/bisu"
-export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu -o $TMP/bisu && chmod +x $TMP/bisu && $TMP/bisu -f install"
+export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu -o ./bisu && chmod +x ./bisu && ./bisu -f install"
 
 ## <user-customized-variables>
 # Set this utility's name
 export UTILITY_NAME="ecs-manager"
 # Set this utility's version number
-export UTILITY_VERSION="3.3.18"
+export UTILITY_VERSION="3.3.19"
 # Set this utility's doc URI
 export UTILITY_INFO_URI="https://bisu.cc/p/ecs-manager"
 # Set this utility's last release date
-export LAST_RELEASE_DATE="2025-07-18Z"
+export LAST_RELEASE_DATE="2025-07-21Z"
 # Atomic mutex lock switch for single-threaded utilities
 export ATOMIC_MUTEX_LOCK="true"
 # Debug Switch
@@ -217,11 +217,8 @@ prep_ssh_command() {
 
     # Apply PEM file if preferred
     if [[ "$PREFER_PEM" == "true" ]]; then
-        log_msg "Connecting to [$HOST_NAME] via SSH with PEM..." "true"
         [[ -z "$ssh_command" ]] || ssh_command+=" "
         ssh_command+="-i '$PEM_FILE'"
-    else
-        log_msg "Connecting to [$HOST_NAME] via SSH..." "true"
     fi
 
     if [[ "$use_proxy" == "true" ]]; then
@@ -314,10 +311,10 @@ ssh_handle() {
 
         # Apply PEM file if preferred
         if [ "$PREFER_PEM" == "true" ]; then
-            log_msg "Connecting via MOSH with PEM..."
+            log_msg "Connecting to [${HOST_NAME}] via MOSH with PEM..."
             params="-i '$PEM_FILE' $params"
         else
-            log_msg "Connecting via MOSH..."
+            log_msg "Connecting to [${HOST_NAME}] via MOSH..."
         fi
 
         # Construct SSH command for MOSH connection
@@ -348,6 +345,11 @@ ssh_handle() {
             log_msg "Setting the hostname..."
             $this.remote_exec_command "$remote_set_hostname"
         elif [[ "$operation" == "connect" ]]; then
+            if [ "$PREFER_PEM" == "true" ]; then
+                log_msg "Connecting to [${HOST_NAME}] with PEM..."
+            else
+                log_msg "Connecting to [${HOST_NAME}]..."
+            fi
             $this.remote_exec_command
         elif [[ "$operation" == "rsync" ]]; then
             log_msg "Starting rsync..."
@@ -518,7 +520,7 @@ create() {
         error_exit "Failed to create temp file."
     }
 
-    saferm "$tmpfile" "/tmp" "when_quit"
+    saferm "$tmpfile" "$TMPDIR" "when_quit"
     saferm "$tmpfile" "/var" "when_quit"
 
     cat >"$tmpfile" <<EOF
@@ -753,7 +755,7 @@ gen_ed25519_key() {
     local pem="$key_dir/$filename"
     local pem_pub="$pem.pub"
 
-    local temp_dir="/tmp"
+    local temp_dir="$TMPDIR"
     local datetime=$(date +'%Y-%m-%d')
     temp_dir="$temp_dir/ed25519_$datetime"
     mkdir_p "$temp_dir"
@@ -799,7 +801,7 @@ gen_ed25519_key() {
 
     move_file "$temp_pem" "$pem" || error_exit "Failed to generate ssh key."
     move_file "$temp_pem_pub" "$pem_pub" || error_exit "Failed to generate ssh key."
-    saferm "$temp_dir" "/tmp" "when_quit"
+    saferm "$temp_dir" "$TMPDIR" "when_quit"
 
     log_msg "✅ ed25519 key files were successfully generated."
 }
@@ -808,7 +810,7 @@ gen_ed25519_key() {
 @def
 reg_pubkey_remotely() {
     local pubkey_file=$(trim "$1")
-    local temp_file="/tmp/authorized_keys_$(uuidv4)"
+    local temp_file="$TMPDIR/authorized_keys_$(uuidv4)"
     is_file "$pubkey_file" || error_exit "Specified pubkey file: $pubkey_file not found."
     touch "$temp_file"
     local pubkey=$(trim "$(cat $pubkey_file)")
