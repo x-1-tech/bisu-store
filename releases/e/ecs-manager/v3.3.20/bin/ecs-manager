@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 ######################################################## BISU Importer Start #########################################################
 ## Official Web Site: https://bisu.cc
-## Version: 20250721Z1
+## Version: 20250726Z1
 ## Recommended BISU PATH: /usr/local/sbin/bisu
 ## Set the required version of BISU
 export THIS_REQUIRED_BISU_VERSION=">=9.0.0"
 export BISU_PATH="/usr/local/sbin/bisu"
+export TERMUX_BISU_PATH="/data/data/com.termux/files/usr/bin/bisu"
 export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu -o ./bisu && chmod +x ./bisu && ./bisu -f install"
 
 ## <user-customized-variables>
 # Set this utility's name
 export UTILITY_NAME="ecs-manager"
 # Set this utility's version number
-export UTILITY_VERSION="3.3.19"
+export UTILITY_VERSION="3.3.20"
 # Set this utility's doc URI
 export UTILITY_INFO_URI="https://bisu.cc/p/ecs-manager"
 # Set this utility's last release date
-export LAST_RELEASE_DATE="2025-07-21Z"
+export LAST_RELEASE_DATE="2025-07-28Z"
 # Atomic mutex lock switch for single-threaded utilities
 export ATOMIC_MUTEX_LOCK="true"
 # Debug Switch
@@ -44,7 +45,7 @@ export EXIT_WITH_COMMANDS=()
 ## </exit-with-commands>
 
 ## Import BISU file
-source "$BISU_PATH" 2>/dev/null || {
+source "$BISU_PATH" 2>/dev/null || source "$TERMUX_BISU_PATH" 2>/dev/null || {
     command -v "bash" &>/dev/null || {
         printf '%s\n' "BISU is bash dedicated, using it in another shell is risky."
         exit 1
@@ -63,7 +64,7 @@ source "$BISU_PATH" 2>/dev/null || {
 # Or personal hosts easy handling
 
 # Set the ecs hosts configs directory path
-export HOSTS_INFO_DIR="$HOME/.local/ecs-manager/ecs-instances"
+export HOSTS_INFO_DIR="ecs-instances"
 # ssh known hosts file path
 export KNOWN_HOSTS_FILE="$HOME/.ssh/known_hosts"
 # The below to set the default values for the environment
@@ -90,6 +91,7 @@ export HOSTNAME_BACKUP_FILE="/etc/hostname.backup.default"
 @def
 __construct() {
     # Parameters (these can come from the environment or command-line arguments)
+    HOSTS_INFO_DIR="$(user_conf_dir)/${HOSTS_INFO_DIR}"
     in_array "${USE_PROXY}" "true" "false" || USE_PROXY="false"
     in_array "${USE_MOSH}" "true" "false" || USE_MOSH="false"
     USERNAME="${USERNAME:-"user"}"
@@ -461,13 +463,13 @@ list_hosts() {
     # Display the current directory at the top
     current_dir=$(relative_path "$host_config_dir" "$parent_dir")
     if [[ -n "$current_dir" ]]; then
-        printf '%s' " * [$current_dir]"
+        printf '%s\n' " * [$current_dir]"
     fi
 
     # List subdirectories with [folder] prefix
     find "$host_config_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while read -r dir; do
         sub_dir=$(relative_path "$dir" "$parent_dir")
-        printf '%s' " + [$sub_dir]"
+        printf '%s\n' " + [$sub_dir]"
     done
 
     # List files without extensions in the parent directory
@@ -481,7 +483,7 @@ list_hosts() {
         else
             filename="$file_name"
         fi
-        printf '%s' " - $filename"
+        printf '%s\n' " - $filename"
     done
 }
 
