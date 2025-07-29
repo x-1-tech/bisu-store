@@ -13,11 +13,11 @@ export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu -o ./bisu && chmod +x ./
 # Set this utility's name
 export UTILITY_NAME="ecs-manager"
 # Set this utility's version number
-export UTILITY_VERSION="3.3.20"
+export UTILITY_VERSION="3.3.21"
 # Set this utility's doc URI
 export UTILITY_INFO_URI="https://bisu.cc/p/ecs-manager"
 # Set this utility's last release date
-export LAST_RELEASE_DATE="2025-07-28Z"
+export LAST_RELEASE_DATE="2025-07-30Z"
 # Atomic mutex lock switch for single-threaded utilities
 export ATOMIC_MUTEX_LOCK="true"
 # Debug Switch
@@ -153,7 +153,6 @@ set_host_info() {
 
     $this.exact_host_config "$host_name"
     HOST_NAME="$host_name"
-
     local use_proxy=$(dict_get_val "USE_PROXY") && USE_PROXY="$use_proxy"
     local use_mosh=$(dict_get_val "USE_MOSH") && USE_MOSH="$use_mosh"
     local username=$(dict_get_val "USERNAME") && USERNAME="$username"
@@ -713,7 +712,7 @@ remove_known_host() {
 gen_ed25519_key() {
     local key_path=$(trim "$1")
     local comment=$(trim "$2")
-    comment=${comment:-"\$(whoami)@\$(hostname)"}
+    comment=${comment:-"${UNIX_USERNAME}@${UNIX_HOSTNAME}"}
     local password=$(trim "$3")
     local strength=$(trim "$4")
     strength=${strength:-"high"}
