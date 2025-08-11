@@ -17,7 +17,7 @@ export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu -o ./bisu && chmod +x ./
 # Set this utility's name
 export UTILITY_NAME="ecs-manager"
 # Set this utility's version number
-export UTILITY_VERSION="3.3.22"
+export UTILITY_VERSION="3.3.23"
 # Set this utility's doc URI
 export UTILITY_INFO_URI="https://bisu.cc"
 # Set this utility's last release date
@@ -168,7 +168,6 @@ set_host_info() {
     local prefer_pem=$(dict_get_val "PREFER_PEM") && PREFER_PEM="$prefer_pem"
     local pem_file=$(dict_get_val "PEM_FILE") && PEM_FILE=$(eval printf '%s' "$pem_file")
     local error_msg=""
-
     PEM_FILE=$($this.get_pem_file "$PEM_FILE")
 
     # Validate inputs
@@ -369,10 +368,10 @@ ssh_handle() {
             # Validate format: "local:/path" or "remote:/path"
             local valid_regex="^(.+):(.+)$"
             if [[ ! "$dest1" =~ $valid_regex ]]; then
-                error_exit "Invalid format for dest1. Please check for its completeness of format: local:/path/to/dest or \$hostname:/path/to/dest"
+                error_exit "Invalid format for dest1. Please check for its completeness of format: local:/path/to/dest or hostname:/path/to/dest"
             fi
             if [[ ! "$dest2" =~ $valid_regex ]]; then
-                error_exit "Invalid format for dest2. Please check for its completeness of format: local:/path/to/dest or \$hostname:/path/to/dest"
+                error_exit "Invalid format for dest2. Please check for its completeness of format: local:/path/to/dest or hostname:/path/to/dest"
             fi
 
             # Extract actual paths
