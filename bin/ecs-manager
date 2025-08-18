@@ -1,29 +1,37 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # shellcheck disable=SC2071,SC1087,SC2159,SC2070,SC2155,SC2046,SC2206,SC2154,SC2157,SC2128,SC2120,SC2178,SC2086,SC2009,SC2015,SC2004,SC2005,SC1003,SC1091,SC2034
-# shellcheck disable=SC2207,SC2181,SC2018,SC2019,SC2059,SC2317,SC2064,SC2188,SC1090,SC2106,SC2329,SC2235,SC1091,SC2153,SC2076,SC2102,SC2324,SC2283,SC2179
+# shellcheck disable=SC2207,SC2181,SC2018,SC2019,SC2059,SC2317,SC2064,SC2188,SC1090,SC2106,SC2329,SC2235,SC1091,SC2153,SC2076,SC2102,SC2324,SC2283,SC2179,SC2162
 ################################################################### BISU Importer Start ########################################################################
 ## Official Web Site: https://bisu.cc
-## Version: v9-20250811Z1
-## Recommended BISU PATH: /usr/local/sbin/bisu
+## Version: v9-20250818Z1
+## Recommended BISU PATH: /usr/local/bin/bisu
 ## Set the required version of BISU
 export THIS_REQUIRED_BISU_VERSION=">=9.0.0"
 export BISU_BOUND="./bisu"
-export BISU_PATH="/usr/local/sbin/bisu"
+export BISU_PATH="/usr/local/bin/bisu"
 export TERMUX_BISU_PATH="/data/data/com.termux/files/usr/bin/bisu"
-export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu -o ./bisu && chmod +x ./bisu && ./bisu -f install"
+export BISU_DL_COMMAND="curl -sL https://g.bisu.cc/bisu-file -o ./bisu && chmod +x ./bisu && ./bisu -f install"
 
 ## <user-customized-variables>
 # Set this utility's name
 export UTILITY_NAME="ecs-manager"
 # Set this utility's version number
-export UTILITY_VERSION="3.3.23"
+export UTILITY_VERSION="3.3.25"
+# Set this utility's last release date
+export LAST_RELEASE_DATE="2025-08-18Z"
 # Set this utility's doc URI
 export UTILITY_INFO_URI="https://bisu.cc"
-# Set this utility's last release date
-export LAST_RELEASE_DATE="2025-08-11Z"
+# Installation target dir
+export TARGET_DIR="/usr/local/bin"
 # Atomic mutex lock switch for single-threaded utilities
 export ATOMIC_MUTEX_LOCK="true"
+# Signature verification switch
+export VERIFY_UTILITY_SIG="true"
+# GPG Signature algorithm set
+export GPG_SIG_ALGO="sha256"
+# Style code injection function
+export FUNC_STYLE_CODE_INJECTION="__style_code_injection"
 # Debug Switch
 export DEBUG_MODE="false"
 ## </user-customized-variables>
@@ -143,8 +151,19 @@ exact_host_config() {
         error_exit "The host [$host_name] config file was not found."
     fi
 
-    yaml_to_array "$(cat "$host_config_file")"
     log_msg "Using $host_config_file"
+
+    local host_config=$(yaml_to_array "$(cat "$host_config_file")")
+    USE_PROXY=$(array_get "host_config" "USE_PROXY")
+    USE_MOSH=$(array_get "host_config" "USE_MOSH")
+    USERNAME=$(array_get "host_config" "USERNAME")
+    HOST_ADDR=$(array_get "host_config" "HOST_ADDR")
+    HOST_PORT=$(array_get "host_config" "HOST_PORT")
+    PROXY_ADDR=$(array_get "host_config" "PROXY_ADDR")
+    PROXY_PORT=$(array_get "host_config" "PROXY_PORT")
+    MOSH_PORTS=$(array_get "host_config" "MOSH_PORTS")
+    PREFER_PEM=$(array_get "host_config" "PREFER_PEM")
+    PEM_FILE=$(array_get "host_config" "PEM_FILE") && PEM_FILE=$(eval printf '%s' "$pem_file")
 }
 
 # Get host information from the configuration file
@@ -157,16 +176,16 @@ set_host_info() {
 
     $this.exact_host_config "$host_name"
     HOST_NAME="$host_name"
-    local use_proxy=$(dict_get_val "USE_PROXY") && USE_PROXY="$use_proxy"
-    local use_mosh=$(dict_get_val "USE_MOSH") && USE_MOSH="$use_mosh"
-    local username=$(dict_get_val "USERNAME") && USERNAME="$username"
-    local host_addr=$(dict_get_val "HOST_ADDR") && HOST_ADDR="$host_addr"
-    local host_port=$(dict_get_val "HOST_PORT") && HOST_PORT="$host_port"
-    local proxy_addr=$(dict_get_val "PROXY_ADDR") && PROXY_ADDR="$proxy_addr"
-    local proxy_port=$(dict_get_val "PROXY_PORT") && PROXY_PORT="$proxy_port"
-    local mosh_ports=$(dict_get_val "MOSH_PORTS") && MOSH_PORTS="$mosh_ports"
-    local prefer_pem=$(dict_get_val "PREFER_PEM") && PREFER_PEM="$prefer_pem"
-    local pem_file=$(dict_get_val "PEM_FILE") && PEM_FILE=$(eval printf '%s' "$pem_file")
+    local use_proxy="$USE_PROXY"
+    local use_mosh="$USE_MOSH"
+    local username="$USERNAME"
+    local host_addr="$HOST_ADDR"
+    local host_port="$HOST_PORT"
+    local proxy_addr="$PROXY_ADDR"
+    local proxy_port="$PROXY_PORT"
+    local mosh_ports="$MOSH_PORTS"
+    local prefer_pem="$PREFER_PEM"
+    local pem_file="$PEM_FILE"
     local error_msg=""
     PEM_FILE=$($this.get_pem_file "$PEM_FILE")
 
@@ -426,7 +445,7 @@ ssh_handle() {
 # Function to list hosts
 @def
 list_hosts() {
-    local sub_folder parent_dir host_config_dir
+    local sub_folder parent_dir host_config_dir sub_dir filename
 
     # Validate and process input arguments
     sub_folder=$(trim "$1")
@@ -477,13 +496,11 @@ list_hosts() {
     # List files without extensions in the parent directory
     find "$host_config_dir" -mindepth 1 -maxdepth 1 -type f 2>/dev/null | while read -r file; do
         sub_dir=$(relative_path $(dirname "$file") "$parent_dir")
-        file_name=$(basename "$file")
-        file_name=$(printf '%s' "$file_name" | awk -F. '{OFS="."; NF--; print $0}')
-        string_starts_with "$file_name" "\." && continue
-        if [[ -n "$sub_dir" ]]; then
-            filename="$sub_dir/$file_name"
-        else
-            filename="$file_name"
+        filename=$(basename "$file")
+        filename=$(printf '%s' "$filename" | awk -F. '{OFS="."; NF--; print $0}')
+        string_starts_with "$filename" "\." && continue
+        if [ -n "$sub_dir" ]; then
+            filename="$sub_dir/$filename"
         fi
         printf '%s\n' " - $filename"
     done
@@ -623,14 +640,13 @@ rename() {
 #shortcut for remove
 @def
 remove() {
-    local param1=$(dict_get_val 1)
-    local param2=$(dict_get_val 2)
+    local args=$(get_args)
+    local param1=$(array_get "args" 1)
+    local param2=$(array_get "args" 2)
     local option_force=""
     local option_yes=""
     local host_path="$param2"
-
-    get_args
-    option_force=$(dict_get_val "f" "force")
+    option_force=$(array_get "args" "f" "force")
 
     if [[ -n "$option_force" ]]; then
         if [[ "$option_force" == "rm" ]]; then
@@ -726,15 +742,15 @@ gen_ed25519_key() {
         error_exit "ssh-keygen command not found."
     fi
 
-    get_file_info "$key_path"
-    local filename=$(dict_get_val "FILE_NAME")
-    local file_path=$(dict_get_val "FILE_PATH")
-    local file_ext=$(dict_get_val "FILE_EXT")
-    local file_dir=$(dict_get_val "FILE_DIR")
-    local file_exists=$(dict_get_val "FILE_EXISTS")
-    local file_is_dir=$(dict_get_val "FILE_IS_DIR")
-    local file_is_file=$(dict_get_val "FILE_IS_FILE")
-    local file_has_ext=$(dict_get_val "FILE_HAS_EXT")
+    local file_info=$(get_file_info "$key_path")
+    local filename=$(array_get "file_info" "filename")
+    local file_path=$(array_get "file_info" "file_path")
+    local file_ext=$(array_get "file_info" "file_ext")
+    local file_dir=$(array_get "file_info" "file_dir")
+    local file_exists=$(array_get "file_info" "file_exists")
+    local file_is_dir=$(array_get "file_info" "is_dir")
+    local file_is_file=$(array_get "file_info" "is_file")
+    local file_has_ext=$(array_get "file_info" "file_has_ext")
 
     if [ -z "$filename" ]; then
         filename="$default_filename"
